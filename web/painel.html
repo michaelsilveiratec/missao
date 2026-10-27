@@ -1,0 +1,104 @@
+
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Missão Marte - ECLSS</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 600px;
+            margin: 40px auto;
+            padding: 20px;
+            background: #f1f4f8;
+        }
+
+        section {
+            background: white;
+            padding: 20px;
+            margin-bottom: 20px;
+            border-radius: 10px;
+        }
+
+        input, button {
+            display: block;
+            width: 100%;
+            box-sizing: border-box;
+            padding: 12px;
+            margin-top: 10px;
+        }
+
+        button {
+            background: #155eef;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+
+        #mensagem {
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <h1>Habitat de Marte - ECLSS</h1>
+
+    <section>
+        <h2>Recursos disponíveis</h2>
+        <p>Oxigênio: <span id="oxigenio">1000</span> unidades</p>
+        <p>Água: <span id="agua">500</span> litros</p>
+    </section>
+
+    <section>
+        <h2>Solicitar oxigênio extra</h2>
+
+        <form id="formulario">
+            <label for="quantidade">Quantidade solicitada:</label>
+            <input
+                type="number"
+                id="quantidade"
+                min="1"
+                step="1"
+                required
+            >
+            <button type="submit">Solicitar oxigênio</button>
+        </form>
+
+        <p id="mensagem" role="status" aria-live="polite"></p>
+    </section>
+
+    <script>
+        const formulario = document.getElementById("formulario");
+        const campo = document.getElementById("quantidade");
+        const mensagem = document.getElementById("mensagem");
+
+        formulario.addEventListener("submit", function(event) {
+            event.preventDefault();
+
+            const quantidade = Number(campo.value);
+            const estoque = Number(
+                document.getElementById("oxigenio").textContent
+            );
+
+            if (!Number.isInteger(quantidade) || quantidade <= 0) {
+                mensagem.textContent =
+                    "Erro: informe uma quantidade inteira positiva.";
+                return;
+            }
+
+            if (quantidade > estoque) {
+                mensagem.textContent =
+                    "Erro: oxigênio insuficiente para a solicitação.";
+                return;
+            }
+
+            document.getElementById("oxigenio").textContent =
+                estoque - quantidade;
+
+            mensagem.textContent =
+                "Solicitação aprovada! Oxigênio atualizado.";
+        });
+    </script>
+</body>
+</html>
