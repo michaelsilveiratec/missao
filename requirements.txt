@@ -1,6 +1,5 @@
-
-pytest
 pytest-mock
 pytest-cov
 pytest-bdd
 selenium
+pytest==8.3.5
