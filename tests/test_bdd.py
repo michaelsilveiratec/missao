@@ -63,7 +63,7 @@ def solicitacao_aprovada(contexto):
 
 @then("a solicitação deve ser negada")
 def solicitacao_negada(contexto):
-    assert contexto["aprovada"] is Fals
+    assert contexto["aprovada"] is False
 
 
 @then(
