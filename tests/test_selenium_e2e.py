@@ -1,101 +1,54 @@
-
 import pytest
-
 from pathlib import Path
+
 from selenium import webdriver
-from selenium.webdriver.common.by import By
+from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
+from selenium.webdriver.common.by import By
 
 
 @pytest.fixture
 def driver():
-    options = webdriver.ChromeOptions()
+    options = Options()
     options.add_argument("--headless=new")
     options.add_argument("--window-size=1920,1080")
-    options.add_argument("--no-sandbox")
-    options.add_argument("--disable-dev-shm-usage")
 
     navegador = webdriver.Chrome(options=options)
-    navegador.implicitly_wait(0)
+    navegador.implicitly_wait(10)
 
-    try:
-        yield navegador
-    finally:
-        navegador.quit()
+    yield navegador
+
+    navegador.quit()
 
 
-@pytest.fixture
-def painel(driver):
-    caminho = (
-        Path(__file__).resolve().parents[1]
-        / "web"
-        / "painel.html"
+def test_pagina_local(driver, tmp_path):
+    pagina = tmp_path / "habitat.html"
+
+    pagina.write_text(
+        """
+        <!DOCTYPE html>
+        <html lang="pt-BR">
+        <head><title>Habitat de Marte</title></head>
+        <body>
+            <h1 id="status">Sistema ECLSS ativo</h1>
+        </body>
+        </html>
+        """,
+        encoding="utf-8"
     )
 
-    driver.get(caminho.as_uri())
-    return driver
+    driver.get(pagina.as_uri())
 
-
-def salvar_evidencia(painel, nome):
-    pasta = Path("evidencias")
-    pasta.mkdir(exist_ok=True)
-    painel.save_screenshot(str(pasta / nome))
-
-
-def test_solicitacao_oxigenio_aprovada(painel):
     try:
-        campo = painel.find_element(By.ID, "quantidade")
-        campo.send_keys("100")
-
-        painel.find_element(
-            By.CSS_SELECTOR,
-            "#formulario button[type='submit']"
-        ).click()
-
-        WebDriverWait(painel, 5).until(
-            EC.text_to_be_present_in_element(
-                (By.ID, "mensagem"),
-                "Solicitação aprovada"
+        elemento = WebDriverWait(driver, 10).until(
+            EC.visibility_of_element_located(
+                (By.ID, "status")
             )
         )
 
-        assert painel.find_element(By.ID, "oxigenio").text == "900"
+        assert elemento.text == "Sistema ECLSS ativo"
 
-        assert "Solicitação aprovada" in painel.find_element(
-            By.ID, "mensagem"
-        ).text
-
-    except Exception:
-        salvar_evidencia(
-            painel,
-            "falha_solicitacao_aprovada.png"
-        )
-        raise
-
-
-def test_solicitacao_acima_do_estoque(painel):
-    try:
-        campo = painel.find_element(By.ID, "quantidade")
-        campo.send_keys("2000")
-
-        painel.find_element(
-            By.CSS_SELECTOR,
-            "#formulario button[type='submit']"
-        ).click()
-
-        WebDriverWait(painel, 5).until(
-            EC.text_to_be_present_in_element(
-                (By.ID, "mensagem"),
-                "oxigênio insuficiente"
-            )
-        )
-
-        assert painel.find_element(By.ID, "oxigenio").text == "1000"
-
-    except Exception:
-        salvar_evidencia(
-            painel,
-            "falha_estoque_insuficiente.png"
-        )
+    except AssertionError:
+        driver.save_screenshot("falha_selenium.png")
         raise

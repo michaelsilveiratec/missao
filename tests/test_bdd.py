@@ -1,4 +1,3 @@
-
 import pytest
 from pytest_bdd import scenarios, given, when, then, parsers
 
@@ -7,31 +6,43 @@ from src.gerenciador_recursos import (
     OxigenioInsuficienteError
 )
 
+
 scenarios("features/solicitacao_oxigenio.feature")
 
 
 @pytest.fixture
-def contexto():
-    return {}
+def contexto_solicitacao():
+    return {
+        "sistema": None,
+        "aprovada": False
+    }
 
 
 @given(
     parsers.parse(
-        "que o habitat possui {estoque:d} unidades de oxigênio"
-    )
+        "que o habitat possui {quantidade:d} unidades de oxigênio"
+    ),
+    target_fixture="contexto_solicitacao"
 )
-def habitat_com_estoque(contexto, estoque):
-    contexto["sistema"] = GerenciadorRecursosMarte(
-        oxigenio=estoque,
-        agua=500
+def habitat_com_oxigenio(quantidade):
+    sistema = GerenciadorRecursosMarte(
+        oxigenio=quantidade,
+        agua=500,
+        consumo_oxigenio=1,
+        consumo_agua=0
     )
-    contexto["aprovada"] = None
-    contexto["quantidade"] = None
+
+    return {
+        "sistema": sistema,
+        "aprovada": False
+    }
 
 
-@given("que o habitat está em nível de emergência critico")
-def habitat_em_crise(contexto):
-    contexto["sistema"].calcular_taxa_emergencia("critico")
+@given(
+    "que o habitat está em nível de emergência critico"
+)
+def nivel_emergencia_critico(contexto_solicitacao):
+    contexto_solicitacao["sistema"].calcular_taxa_emergencia("critico")
 
 
 @when(
@@ -39,46 +50,48 @@ def habitat_em_crise(contexto):
         "o astronauta solicita {quantidade:d} unidades de oxigênio"
     )
 )
-def solicitar_oxigenio(contexto, quantidade):
-    sistema = contexto["sistema"]
-    contexto["quantidade"] = quantidade
+def astronauta_solicita_oxigenio(
+    contexto_solicitacao,
+    quantidade
+):
+    sistema = contexto_solicitacao["sistema"]
 
     try:
-        if quantidade > sistema.oxigenio:
+        if sistema.oxigenio < quantidade:
             raise OxigenioInsuficienteError(
-                "Estoque insuficiente"
+                "Estoque de oxigênio insuficiente."
             )
 
         sistema.oxigenio -= quantidade
-        contexto["aprovada"] = True
+        contexto_solicitacao["aprovada"] = True
 
     except OxigenioInsuficienteError:
-        contexto["aprovada"] = False
+        contexto_solicitacao["aprovada"] = False
 
 
 @then("a solicitação deve ser aprovada")
-def solicitacao_aprovada(contexto):
-    assert contexto["aprovada"] is True
+def solicitacao_aprovada(contexto_solicitacao):
+    assert contexto_solicitacao["aprovada"] is True
 
 
 @then("a solicitação deve ser negada")
-def solicitacao_negada(contexto):
-    assert contexto["aprovada"] is False
+def solicitacao_negada(contexto_solicitacao):
+    assert contexto_solicitacao["aprovada"] is False
 
 
 @then(
     parsers.parse(
-        "o estoque deve ficar com {estoque:d} unidades"
+        "o estoque deve ficar com {quantidade:d} unidades"
     )
 )
-def conferir_estoque(contexto, estoque):
-    assert contexto["sistema"].oxigenio == estoque
+def estoque_final(contexto_solicitacao, quantidade):
+    assert contexto_solicitacao["sistema"].oxigenio == quantidade
 
 
 @then(
     parsers.parse(
-        "o estoque deve continuar com {estoque:d} unidades"
+        "o estoque deve continuar com {quantidade:d} unidades"
     )
 )
-def conferir_estoque_preservado(contexto, estoque):
-    assert contexto["sistema"].oxigenio == estoque
+def estoque_continuou(contexto_solicitacao, quantidade):
+    assert contexto_solicitacao["sistema"].oxigenio == quantidade

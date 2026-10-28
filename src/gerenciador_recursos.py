@@ -1,4 +1,3 @@
-
 from src.servico_telemetria import ServicoTelemetriaEspacial
 
 
@@ -15,6 +14,7 @@ class NivelEmergenciaInvalidoError(Exception):
 
 
 class GerenciadorRecursosMarte:
+
     def __init__(
         self,
         oxigenio=1000.0,
@@ -23,21 +23,26 @@ class GerenciadorRecursosMarte:
         consumo_agua=3.0,
         telemetria=None
     ):
+        valores = [
+            oxigenio,
+            agua,
+            consumo_oxigenio,
+            consumo_agua
+        ]
+
+        if any(valor < 0 for valor in valores):
+            raise ValueError("Os valores não podem ser negativos.")
+
         self.oxigenio = float(oxigenio)
         self.agua = float(agua)
         self.consumo_oxigenio = float(consumo_oxigenio)
         self.consumo_agua = float(consumo_agua)
-        self.telemetria = (
-            telemetria or ServicoTelemetriaEspacial()
-        )
 
-        if min(
-            self.oxigenio,
-            self.agua,
-            self.consumo_oxigenio,
-            self.consumo_agua
-        ) < 0:
-            raise ValueError("Os valores não podem ser negativos.")
+        self.telemetria = (
+            telemetria
+            if telemetria is not None
+            else ServicoTelemetriaEspacial()
+        )
 
     def calcular_consumo_diario(self, astronautas):
         if astronautas < 0:
@@ -80,15 +85,14 @@ class GerenciadorRecursosMarte:
         self.oxigenio -= gasto_oxigenio
         self.agua -= gasto_agua
 
-        self.telemetria.enviar_relatorio({
-            "oxigenio_restante": self.oxigenio,
-            "agua_restante": self.agua
-        })
-
-        return {
+        relatorio = {
             "oxigenio_restante": self.oxigenio,
             "agua_restante": self.agua
         }
+
+        self.telemetria.enviar_relatorio(relatorio)
+
+        return relatorio
 
     def calcular_taxa_emergencia(self, nivel):
         taxas = {

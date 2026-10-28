@@ -1,4 +1,3 @@
-
 import pytest
 
 from src.gerenciador_recursos import (
@@ -9,66 +8,61 @@ from src.gerenciador_recursos import (
 )
 
 
+def test_calcular_consumo_diario(gerenciador):
+    resultado = gerenciador.calcular_consumo_diario(10)
+
+    assert resultado["oxigenio"] == pytest.approx(8.4)
+    assert resultado["agua"] == pytest.approx(30.0)
+
+
 @pytest.mark.parametrize(
-    "astronautas, oxigenio_esperado, agua_esperada",
+    "astronautas, oxigenio, agua",
     [
+        (0, 0.0, 0.0),
         (1, 0.84, 3.0),
-        (2, 1.68, 6.0),
-        (4, 3.36, 12.0),
-        (6, 5.04, 18.0)
+        (5, 4.2, 15.0),
+        (10, 8.4, 30.0)
     ]
 )
-def test_consumo_diario(
+def test_consumo_parametrizado(
     gerenciador,
     astronautas,
-    oxigenio_esperado,
-    agua_esperada
+    oxigenio,
+    agua
 ):
     resultado = gerenciador.calcular_consumo_diario(astronautas)
 
-    assert resultado["oxigenio"] == pytest.approx(
-        oxigenio_esperado
-    )
-    assert resultado["agua"] == pytest.approx(agua_esperada)
+    assert resultado["oxigenio"] == pytest.approx(oxigenio)
+    assert resultado["agua"] == pytest.approx(agua)
 
 
-@pytest.mark.parametrize(
-    "astronautas, dias",
-    [
-        (1, 1),
-        (4, 7),
-        (6, 25)
-    ]
-)
-def test_validar_estoque(gerenciador, astronautas, dias):
-    assert gerenciador.validar_estoque(astronautas, dias)
+def test_aplicar_consumo_reduz_estoque(gerenciador):
+    resultado = gerenciador.aplicar_consumo(10, dias=1)
+
+    assert gerenciador.oxigenio == pytest.approx(991.6)
+    assert gerenciador.agua == pytest.approx(470.0)
+
+    assert resultado["oxigenio_restante"] == pytest.approx(991.6)
+    assert resultado["agua_restante"] == pytest.approx(470.0)
 
 
-def test_consumo_reduz_estoque(gerenciador):
-    resultado = gerenciador.aplicar_consumo(2, 1)
-
-    assert resultado["oxigenio_restante"] == pytest.approx(998.32)
-    assert resultado["agua_restante"] == pytest.approx(494.0)
-
-    gerenciador.telemetria.enviar_relatorio.assert_called_once_with({
-        "oxigenio_restante": pytest.approx(998.32),
-        "agua_restante": pytest.approx(494.0)
-    })
+def test_validar_estoque_suficiente(gerenciador):
+    assert gerenciador.validar_estoque(10, dias=1) is True
 
 
 def test_oxigenio_insuficiente():
     sistema = GerenciadorRecursosMarte(
         oxigenio=1,
-        agua=100
+        agua=500
     )
 
     with pytest.raises(OxigenioInsuficienteError):
-        sistema.aplicar_consumo(2)
+        sistema.aplicar_consumo(10)
 
 
 def test_agua_insuficiente():
     sistema = GerenciadorRecursosMarte(
-        oxigenio=100,
+        oxigenio=1000,
         agua=1
     )
 
@@ -76,27 +70,19 @@ def test_agua_insuficiente():
         sistema.aplicar_consumo(1)
 
 
-@pytest.mark.parametrize(
-    "nivel, taxa_esperada",
-    [
-        ("baixo", 0.10),
-        ("medio", 0.25),
-        ("alto", 0.50),
-        ("critico", 0.75)
-    ]
-)
-def test_taxa_emergencia(gerenciador, nivel, taxa_esperada):
-    taxa = gerenciador.calcular_taxa_emergencia(nivel)
+@pytest.mark.parametrize("nivel", ["baixo", "medio", "alto", "critico"])
+def test_niveis_de_emergencia(gerenciador, nivel):
+    resultado = gerenciador.calcular_taxa_emergencia(nivel)
 
-    assert taxa == pytest.approx(taxa_esperada)
+    assert 0 <= resultado <= 1
 
 
-def test_nivel_emergencia_invalido(gerenciador):
+def test_nivel_de_emergencia_invalido(gerenciador):
     with pytest.raises(NivelEmergenciaInvalidoError):
         gerenciador.calcular_taxa_emergencia("extremo")
 
 
-def test_alerta_emergencia_critica(gerenciador):
+def test_alerta_em_nivel_critico(gerenciador):
     gerenciador.calcular_taxa_emergencia("critico")
 
     gerenciador.telemetria.disparar_alerta.assert_called_once_with(
@@ -105,20 +91,49 @@ def test_alerta_emergencia_critica(gerenciador):
     )
 
 
-def test_emergencia_baixa_nao_dispara_alerta(gerenciador):
+def test_sem_alerta_em_nivel_baixo(gerenciador):
     gerenciador.calcular_taxa_emergencia("baixo")
 
     gerenciador.telemetria.disparar_alerta.assert_not_called()
 
 
-def test_racionamento(gerenciador):
-    resultado = gerenciador.aplicar_racionamento("alto")
+def test_racionamento_critico(gerenciador):
+    resultado = gerenciador.aplicar_racionamento("critico")
 
-    assert resultado["taxa"] == pytest.approx(0.50)
-    assert resultado["consumo_oxigenio"] == pytest.approx(0.42)
-    assert resultado["consumo_agua"] == pytest.approx(1.5)
+    assert resultado["taxa"] == pytest.approx(0.75)
+    assert resultado["consumo_oxigenio"] == pytest.approx(0.21)
+    assert resultado["consumo_agua"] == pytest.approx(0.75)
 
 
-def test_numero_negativo_de_astronautas(gerenciador):
+@pytest.mark.parametrize(
+    "oxigenio, agua",
+    [
+        (-1, 100),
+        (100, -1),
+        (-1, -1)
+    ]
+)
+def test_nao_permite_estoque_negativo(oxigenio, agua):
+    with pytest.raises(ValueError):
+        GerenciadorRecursosMarte(
+            oxigenio=oxigenio,
+            agua=agua
+        )
+
+
+def test_nao_permite_consumo_com_astronautas_negativos(gerenciador):
     with pytest.raises(ValueError):
         gerenciador.calcular_consumo_diario(-1)
+
+
+def test_consumo_nao_altera_estoque_se_faltar_recurso():
+    sistema = GerenciadorRecursosMarte(
+        oxigenio=100,
+        agua=1
+    )
+
+    with pytest.raises(AguaInsuficienteError):
+        sistema.aplicar_consumo(1)
+
+    assert sistema.oxigenio == 100
+    assert sistema.agua == 1

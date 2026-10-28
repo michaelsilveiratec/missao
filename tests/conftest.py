@@ -1,4 +1,3 @@
-
 import pytest
 from unittest.mock import MagicMock
 
@@ -26,5 +25,5 @@ def gerenciador(parametros_habitat):
 
     yield sistema
 
-    # Limpeza após cada teste.
+    # Limpeza após cada teste
     telemetria.reset_mock()

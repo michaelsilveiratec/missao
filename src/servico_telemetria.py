@@ -1,11 +1,11 @@
-
 class ServicoTelemetriaEspacial:
+
     def enviar_relatorio(self, relatorio):
-        """Envia o relatório para a estação terrestre."""
+        """Simula o envio de relatório para a Terra."""
         print(f"Relatório enviado à Terra: {relatorio}")
         return True
 
     def disparar_alerta(self, mensagem, nivel):
-        """Envia um alerta de emergência."""
+        """Simula o envio de um alerta de emergência."""
         print(f"ALERTA {nivel}: {mensagem}")
         return True
