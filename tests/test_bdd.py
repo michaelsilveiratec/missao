@@ -81,4 +81,4 @@ def conferir_estoque(contexto, estoque):
     )
 )
 def conferir_estoque_preservado(contexto, estoque):
-    assert contexto["sistema"].oxigenio == 
+    assert contexto["sistema"].oxigenio == estoque
